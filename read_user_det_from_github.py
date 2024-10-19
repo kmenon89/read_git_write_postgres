@@ -2,11 +2,16 @@
 import psycopg2, requests, textwrap,sys,logging
 from prettytable import PrettyTable
 from typing import List,Optional,Dict
-import math
+import math,os
+from dotenv import load_dotenv
 
 #global variable 
 
 GITHUB_PERSONAL_TOKEN=input(f"input the git token:")
+
+# Load environment variables from the .env file
+load_dotenv()
+
 
 # configure logging 
 logging.basicConfig(
@@ -27,12 +32,12 @@ def get_database_connection():
         '''
         
 
-        ''' Connection parameters '''
-        db_host = "localhost"  # or the IP address of the host if connecting remotely
-        db_port = "5432"
-        db_name = "your_database_name"
-        db_user = "postgres"
-        db_password = "your_password"
+        ''' Retrieve Connection parameters from environment variables '''
+        db_host = os.getenv("DB_HOST") #the IP address of the host if connecting remotely
+        db_port = os.getenv("DB_PORT")
+        db_name = os.getenv("DB_NAME")
+        db_user = os.getenv("DB_USER")
+        db_password = os.getenv("DB_PASSWORD")
 
         ''' Connect to the PostgreSQL database'''
 

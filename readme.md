@@ -39,8 +39,14 @@ git add .
 git status 
 gitm commit -a 
 
-TBD:
 
-1. connections needs to be standardised 
-2. upload to github 
+
+how to run:
+*********
+use requirement.txt to install all requirements 
+./venv/bin/python3 read_user_det_from_github.py 
+input 1  : git token 
+input 2 : username 
+
+
 
