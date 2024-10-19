@@ -6,7 +6,7 @@ import math
 
 #global variable 
 
-GITHUB_PERSONAL_TOKEN='<ypur token here>'
+GITHUB_PERSONAL_TOKEN=input(f"input the git token:")
 
 # configure logging 
 logging.basicConfig(
@@ -19,34 +19,40 @@ logging.basicConfig(
 
 
 # Database connection function
-'''
-connect to postgres
-'''
-existing_users=0
-existing_repos=0
-github_personal_token=""
 
-''' Connection parameters '''
-db_host = "localhost"  # or the IP address of the host if connecting remotely
-db_port = "5432"
-db_name = "your_database_name"
-db_user = "postgres"
-db_password = "your_password"
+def get_database_connection():
+    try:        
+        '''
+        connect to postgres
+        '''
+        
 
-''' Connect to the PostgreSQL database'''
+        ''' Connection parameters '''
+        db_host = "localhost"  # or the IP address of the host if connecting remotely
+        db_port = "5432"
+        db_name = "your_database_name"
+        db_user = "postgres"
+        db_password = "your_password"
 
-connection = psycopg2.connect(
-    host="localhost",
-    port="5432",
-    database="postgres",
-    user="postgres",
-    password="Kavitha123"
-)
+        ''' Connect to the PostgreSQL database'''
+
+        connection = psycopg2.connect(
+            host="localhost",
+            port="5432",
+            database="postgres",
+            user="postgres",
+            password="Kavitha123"
+        )
+        logging.info("successfully connected to database")
+        return connection
+    except psycopg2.error as e:
+        logging.error(f"error connecting to database : {e}")
+        sys(exit(1))
 
 #check existing  available users in the db
 
 
-def get_available_users(username:str) -> Dict[str,int]:
+def get_available_users(connection,username:str) -> Dict[str,int]:
     """
     Check the count of existing users and repositories in the database.
 
@@ -90,14 +96,16 @@ def get_user_data_git(username:str) -> Optional[Dict]:
     '''API end point to get user data
     make a get request to api
     '''
+    global GITHUB_PERSONAL_TOKEN
     URL=f"https://api.github.com/users/{username}"
     print(URL)
     headers = {
         "Authorization": f"Bearer {GITHUB_PERSONAL_TOKEN}",
         "User-Agent": "py-github-project"}
+    #logging.info(f"headers:{headers}")
     try: 
         response=requests.get(URL,headers=headers)
-
+        #logging.info(f"response:{response}")
          #check if the request was successful
         if response.status_code == 200:
             logging.info(F"successfully fetched userdata")
@@ -156,7 +164,7 @@ def get_repository_det_git(username:str,pages_total:int,per_page:int)-> Optional
 #write user data into data base userdata table
 
 
-def write_user_data(username:str,user_email:Optional[str],location:Optional[str]):
+def write_user_data(connection,username:str,user_email:Optional[str],location:Optional[str]):
     try:
         with connection.cursor() as cursor:
 
@@ -173,7 +181,7 @@ def write_user_data(username:str,user_email:Optional[str],location:Optional[str]
 #write repositories into data base
 
 
-def write_repositories(username:str,repositories:List[Dict]):
+def write_repositories(connection,username:str,repositories:List[Dict]):
     try:
 
         with connection.cursor() as cursor:
@@ -194,7 +202,7 @@ def write_repositories(username:str,repositories:List[Dict]):
 #print the data as output
 
 
-def print_output(username:str):
+def print_output(connection,username:str):
     try :
         with connection.cursor() as cursor:
             '''Fetch user details'''
@@ -255,7 +263,7 @@ def print_output(username:str):
 
 
 
-def process_user_repos(username:str='',per_page:int=3):
+def process_user_repos(connection,username:str='',per_page:int=3):
     userdata=get_user_data_git(username)
     #print(userdata)
     #print(userdata['public_repos'])
@@ -263,8 +271,8 @@ def process_user_repos(username:str='',per_page:int=3):
     pages_total=math.ceil(total_pages/per_page) #if total_pages % per_page == 0 else (total_pages/per_page) + 1
     repositories=get_repository_det_git(username,pages_total,per_page)
     #print(repositories) 
-    write_repositories(username,repositories)
-    print_output(username)
+    write_repositories(connection,username,repositories)
+    print_output(connection,username)
 
 #main
 def main():
@@ -279,8 +287,12 @@ def main():
     global github_personal_token
     per_page=3
     logging.info(f"username entered is :{username}")
+
+    # Initialize database connection
+    connection = get_database_connection()
+
     try : 
-        counts=get_available_users(username)
+        counts=get_available_users(connection,username)
         existing_users = counts['users']
         existing_repos = counts['repos']
         #print(existing_users,existing_repos)
@@ -288,10 +300,10 @@ def main():
             logging.info(f"user {username} already exist in user table")
             if existing_repos>0:
                 logging.info(f"user {username} already exist in repositories")
-                print_output(username)
+                print_output(connection,username)
             else:
                 logging.info(f"No repositories found for user '{username}'. Fetching from GitHub...")
-                process_user_repos(username,per_page)
+                process_user_repos(connection,username,per_page)
             
         else:
             
@@ -300,8 +312,8 @@ def main():
             if userdata :
                 email=userdata.get('email','NA')
                 location=userdata.get('location','NA')
-                write_user_data(username,email,location)
-                process_user_repos(username,per_page)
+                write_user_data(connection,username,email,location)
+                process_user_repos(connection,username,per_page)
 
             else:
                 logging.error(f"User '{username}' data could not be fetched from GitHub.")
